@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>11402 統計學(一)學期成績查詢 - 王建智 教授</title>
+    <title>11402 學期成績查詢 - 王建智 教授</title>
 
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -41,10 +41,21 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // Google Apps Script API 網址
+        // 請確認這裡是您目前最新部署的 Apps Script 網址
         const API_URL = "https://script.google.com/macros/s/AKfycbyWgFR3wLz6hHPDJTtLSSzvwgFRrriiuzcCOwBsdc-HJvzP28PNashl3_S59fTAGZpqjQ/exec";
+        const SUBJECTS = {
+            statistics: {
+                label: '統計',
+                title: '11402 統計學期成績查詢'
+            },
+            quality: {
+                label: '品管',
+                title: '11402 品管學期成績查詢'
+            }
+        };
 
         const App = () => {
+            const [subject, setSubject] = useState('statistics');
             const [query, setQuery] = useState('');
             const [searchResult, setSearchResult] = useState(null);
             const [loading, setLoading] = useState(false);
@@ -56,52 +67,17 @@
             });
 
             // ==============================
-            // 燈號判斷規則
-            // 四捨五入後：
-            // 60 分以上：綠燈
-            // 50～59 分：黃燈
-            // 低於 50 分：紅燈
-            // ==============================
-            const getStatus = (score) => {
-                const scoreValue = Math.round(parseFloat(score));
-
-                if (scoreValue < 50) {
-                    return {
-                        color: 'red',
-                        label: '紅燈',
-                        desc: '成績未達標',
-                        sub: '',
-                        bg: 'bg-red-500'
-                    };
-                }
-
-                if (scoreValue >= 60) {
-                    return {
-                        color: 'green',
-                        label: '綠燈',
-                        desc: '恭喜通過',
-                        sub: '',
-                        bg: 'bg-green-500'
-                    };
-                }
-
-                return {
-                    color: 'yellow',
-                    label: '黃燈',
-                    desc: '待加強',
-                    sub: '(需申請補救)',
-                    bg: 'bg-yellow-500'
-                };
-            };
-
-            // ==============================
-            // 畫面載入時取得班級統計
+            // 切換科目或畫面載入時，取得班級統計
             // ==============================
             useEffect(() => {
-                fetch(`${API_URL}?type=stats`)
+                setSearchResult(null);
+                setQuery('');
+
+                fetch(`${API_URL}?type=stats&subject=${subject}`)
                     .then(res => res.json())
                     .then(data => {
                         const total = data.green + data.yellow + data.red;
+
                         setStats({
                             green: data.green,
                             yellow: data.yellow,
@@ -111,8 +87,15 @@
                     })
                     .catch(err => {
                         console.error("無法取得統計資料", err);
+
+                        setStats({
+                            green: 0,
+                            yellow: 0,
+                            red: 0,
+                            total: 0
+                        });
                     });
-            }, []);
+            }, [subject]);
 
             // ==============================
             // 查詢個別學生
@@ -123,7 +106,7 @@
                 setLoading(true);
                 setSearchResult(null);
 
-                fetch(`${API_URL}?q=${encodeURIComponent(query.trim())}`)
+                fetch(`${API_URL}?subject=${subject}&q=${encodeURIComponent(query.trim())}`)
                     .then(res => res.json())
                     .then(data => {
                         console.log("API 回傳資料：", data);
@@ -147,26 +130,50 @@
                 <div className="min-h-screen p-4 md:p-8 flex flex-col items-center">
                     <div className="max-w-4xl w-full">
 
-                        {/* 標題區 */}
                         <header className="text-center mb-10">
                             <h1 className="text-4xl font-bold text-slate-800 mb-3 tracking-tight">
-                                11402 統計學(一)學期成績查詢
+                                {SUBJECTS[subject].title}
                             </h1>
 
-                            <div className="inline-block bg-slate-800 text-white px-5 py-1.5 rounded-full text-sm font-medium shadow-md mb-2">
+                            <div className="inline-block bg-slate-800 text-white px-5 py-1.5 rounded-full text-sm font-medium shadow-md mb-4">
                                 任課老師：王建智 教授
                             </div>
 
+                            <div className="flex justify-center gap-3 mt-4 mb-5">
+                                <button
+                                    onClick={() => setSubject('statistics')}
+                                    className={`px-7 py-3 rounded-full font-bold shadow-md transition-all ${
+                                        subject === 'statistics'
+                                            ? 'bg-blue-600 text-white scale-105'
+                                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-blue-50'
+                                    }`}
+                                >
+                                    統計
+                                </button>
+
+                                <button
+                                    onClick={() => setSubject('quality')}
+                                    className={`px-7 py-3 rounded-full font-bold shadow-md transition-all ${
+                                        subject === 'quality'
+                                            ? 'bg-blue-600 text-white scale-105'
+                                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-blue-50'
+                                    }`}
+                                >
+                                    品管
+                                </button>
+                            </div>
+
                             <p className="text-slate-500 text-sm mt-4">
-                                請輸入學號（大寫 U 開頭）或姓名查詢個人狀態燈號
+                                請先選擇科目，再輸入學號（大寫 U 開頭）或姓名查詢個人狀態燈號
                             </p>
                         </header>
 
-                        {/* 統計圖表 */}
                         {stats.total > 0 && (
                             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 mb-10">
                                 <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex justify-between">
-                                    <span>班級燈號分佈概況（共 {stats.total} 人）</span>
+                                    <span>
+                                        {SUBJECTS[subject].label}燈號分佈概況（共 {stats.total} 人）
+                                    </span>
                                 </h2>
 
                                 <div className="flex h-5 w-full rounded-full overflow-hidden bg-slate-100 mb-6 border border-slate-50">
@@ -217,7 +224,6 @@
                             </div>
                         )}
 
-                        {/* 搜尋框 */}
                         <div className="flex flex-col items-center gap-6 mb-12">
                             <div className="flex w-full max-w-md shadow-2xl rounded-2xl overflow-hidden border-2 border-white focus-within:ring-4 focus-within:ring-blue-100 transition-all">
                                 <input
@@ -244,25 +250,23 @@
                             </div>
                         </div>
 
-                        {/* 結果顯示區 */}
                         <div className="min-h-[400px] flex items-center justify-center">
 
                             {searchResult === 'none' && !loading && (
                                 <div className="text-center animate-bounce text-slate-400">
                                     <div className="text-5xl mb-4">🔍</div>
                                     <p className="text-lg font-bold">
-                                        找不到資料，請確認輸入是否正確
+                                        找不到資料，請確認科目、學號或姓名是否正確
                                     </p>
                                 </div>
                             )}
 
                             {searchResult && searchResult !== 'none' && !loading && (() => {
-                                const status = getStatus(searchResult.score);
+                                const status = searchResult.statusInfo;
 
                                 return (
                                     <div className="bg-white w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden border border-slate-100 flex flex-col md:flex-row animate-in fade-in zoom-in duration-300">
 
-                                        {/* 左側燈號 */}
                                         <div className="bg-slate-900 p-8 flex flex-col gap-6 items-center justify-center">
 
                                             <div className={`relative w-16 h-16 rounded-full border-4 border-slate-800 flex items-center justify-center transition-all duration-700 ${
@@ -296,29 +300,21 @@
                                             </div>
                                         </div>
 
-                                        {/* 右側學生資訊 */}
                                         <div className="p-10 flex-grow flex flex-col justify-center bg-white text-center md:text-left">
                                             <span className="text-blue-500 text-xs font-black uppercase tracking-widest mb-2">
                                                 Individual Report
                                             </span>
 
+                                            <div className="inline-block bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-bold mb-4">
+                                                {searchResult.subject}
+                                            </div>
+
                                             <h3 className="text-4xl font-black text-slate-800 mb-1">
                                                 {searchResult.name}
                                             </h3>
 
-                                            <p className="text-slate-400 font-mono text-sm mb-2 tracking-tighter italic">
+                                            <p className="text-slate-400 font-mono text-sm mb-8 tracking-tighter italic">
                                                 {searchResult.id}
-                                            </p>
-
-                                            {/* 顯示系統實際讀取分數 */}
-                                            <p className="text-slate-500 text-sm font-bold mb-8">
-                                                系統讀取成績：{searchResult.score}
-
-                                                {searchResult.rawScore !== undefined && (
-                                                    <span className="block text-xs text-slate-400 mt-1">
-                                                        原始成績：{searchResult.rawScore}
-                                                    </span>
-                                                )}
                                             </p>
 
                                             <div className="border-t border-slate-100 pt-8">
